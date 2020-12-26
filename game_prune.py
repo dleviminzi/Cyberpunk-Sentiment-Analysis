@@ -12,7 +12,8 @@ def format_date(row):
     except:
         print("HERE")    # dump these rows
         print(row)
-        
+
+
 def dump_df(csv_path, publisher_name, ticker):
     df = pd.read_csv(csv_path)
     df.replace('nan', np.nan, regex=True)

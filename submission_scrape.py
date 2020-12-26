@@ -1,10 +1,10 @@
 from psaw import PushshiftAPI
 from time import sleep, strftime, gmtime
 from collections import defaultdict
+from utilities import register_praw
 import pandas as pd
 import json
 import datetime as dt
-import praw
 
 interval = 10
 one_day = 86400
@@ -31,16 +31,8 @@ def submission_scrape():
     df = pd.read_csv("./raw_data/games2010.csv")
 
     # pushshift upvote's are incorrect w/o praw (backend?)
-    creds = {}
-    with open('./reddit_creds.json') as f:
-        creds = json.load(f)
-        
     # register with reddit api
-    r = praw.Reddit(client_id=creds['client_id'],
-                     client_secret=creds['client_secret'],
-                     user_agent=creds['user_agent'],
-                     username=creds['username'],
-                     password=creds['password'])
+    r = register_praw()
 
     # initialize push shift reddit api
     reddit = PushshiftAPI(r)
