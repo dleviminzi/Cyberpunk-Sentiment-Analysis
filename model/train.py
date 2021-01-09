@@ -29,7 +29,9 @@ def train(model, optimizer, t_loader, v_loader, num_epochs=5):
 
     model.train()
     for epoch in range(num_epochs):
-        for (review, sentiment), _ in t_loader:
+        kbar = pkbar.Kbar(target=len(t_loader), epoch=epoch, num_epochs=num_epochs, width=10, always_stateful=False)
+
+        for p_t, ((review, sentiment), _) in enumerate(t_loader):
             optimizer.zero_grad()       # zero grads 
             loss = model_loss(model, sentiment, review)     # calc loss
             loss.backward()         # update grads
@@ -37,18 +39,20 @@ def train(model, optimizer, t_loader, v_loader, num_epochs=5):
 
             # record loss and update step count
             train_loss += loss.item()
-            step_count += 1
+
+            # update progress bar
+            kbar.update(p_t, values=[("training loss", train_loss)])
 
             # validation 
-            if step_count % len(t_loader) == 0:
+            if p_t == len(t_loader):
                 model.eval()    # pause training
 
                 with torch.no_grad():
-                    for (review, sentiment), _ in v_loader:
+                    for p_v, ((review, sentiment), _) in enumerate(v_loader):
                         loss = model_loss(model, sentiment, review)
                         valid_loss += loss.item()
+                        kbar.add(1, values=[('validation loss', valid_loss)])
                 
-                avg_train_loss = train_loss/len(t_loader)
                 avg_valid_loss = valid_loss/len(v_loader)
 
                 # reset training/validation loss
@@ -62,20 +66,3 @@ def train(model, optimizer, t_loader, v_loader, num_epochs=5):
                     checkpoint(model, valid_loss)
 
     checkpoint(model, valid_loss)
-                    
-
-
-
-
-
-
-
-
-
-
-
-        
-
-
-
-

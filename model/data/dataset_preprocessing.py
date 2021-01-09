@@ -4,7 +4,7 @@ import re
 from sklearn.model_selection import train_test_split
 
 def truncate(row):
-    trunc = row['review'][:512]
+    trunc = row['review'][:256]
     return trunc
 
 if __name__ == "__main__":
@@ -12,7 +12,7 @@ if __name__ == "__main__":
     df = df[['review', 'sentiment']]
 
     # chop and clean
-    df['review'] = df.apply(truncate, axis=1)
+    df['t_review'] = df.apply(truncate, axis=1)
     df.review.str.replace('[^a-zA-Z0-9]', ' ')
 
     # train, test, validate
@@ -24,22 +24,10 @@ if __name__ == "__main__":
     test = test.reset_index()
     validate = validate.reset_index()
 
-    train = train[['review', 'sentiment']]
-    test = test[['review', 'sentiment']]
-    validate = validate[['review', 'sentiment']]
+    train = train[['t_review', 'sentiment']]
+    test = test[['t_review', 'sentiment']]
+    validate = validate[['t_review', 'sentiment']]
 
     train.to_csv('./train.csv', index=False)
     test.to_csv('./test.csv', index=False)
     validate.to_csv('./validate.csv', index=False)
-
-
-
-
-
-
-
-
-
-
-
-        

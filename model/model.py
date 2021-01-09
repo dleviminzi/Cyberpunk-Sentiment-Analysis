@@ -3,7 +3,7 @@ import torch.nn as nn
 
 class BERT(nn.Module):
     # implementation is made extremely easy by huggingface
-    def __init__(self, tokenizer):
+    def __init__(self):
         super(BERT, self).__init__()
 
         options_name = "bert-base-uncased"
