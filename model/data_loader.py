@@ -55,7 +55,7 @@ def get_iterators():
     tr_iter, val_iter = data.BucketIterator.splits(datasets=(train_ds, validate_ds),
                                                    sort_key=lambda x: len(x.t_review), 
                                                    device=device, 
-                                                   batch_sizes=(64, 64),
+                                                   batch_sizes=(16, 16),
                                                    sort_within_batch=True, 
                                                    repeat=False)
 

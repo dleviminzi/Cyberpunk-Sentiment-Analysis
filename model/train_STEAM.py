@@ -14,5 +14,5 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=2e-5)
 
     print("Training has begun...")
-    train(model=model, optimizer=optimizer, t_loader=t_loader, v_loader=v_loader, num_epochs=1)
+    train(model=model, optimizer=optimizer, t_loader=t_loader, v_loader=v_loader, num_epochs=3)
     print("Done.")

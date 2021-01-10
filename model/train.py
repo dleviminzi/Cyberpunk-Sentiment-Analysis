@@ -11,25 +11,25 @@ def model_loss(model, sentiment, review):
     return loss
 
 
-def checkpoint(model, valid_loss):
+def save_checkpoint(model, optimizer, epoch, valid_loss):
     torch.save(
         {'model_state_dict' : model.state_dict(),
-            'valid_loss' : valid_loss},
-            './checkpoints/model.pt'
-    )
+         'optimizer_state_dict' : optimizer.state_dict(),
+         'epoch' : epoch,
+         'valid_loss' : valid_loss}, 
+         './checkpoints/model.pt')
 
-    print("Saved checkpoint... Validation loss reported: {}".format(valid_loss))
+    print("\nSaved checkpoint... Validation loss reported: {}\n".format(valid_loss))
 
 
 def train(model, optimizer, t_loader, v_loader, num_epochs=5):
-    step_count = 0
     best_loss = float("Inf")
-    train_loss = 0.0
     valid_loss = 0.0
 
     model.train()
     for epoch in range(num_epochs):
-        kbar = pkbar.Kbar(target=len(t_loader), epoch=epoch, num_epochs=num_epochs, width=10, always_stateful=False)
+        kbar = pkbar.Kbar(target=len(t_loader), epoch=epoch, 
+                          num_epochs=num_epochs, width=10, always_stateful=False)
 
         for p_t, ((review, sentiment), _) in enumerate(t_loader):
             optimizer.zero_grad()       # zero grads 
@@ -37,32 +37,29 @@ def train(model, optimizer, t_loader, v_loader, num_epochs=5):
             loss.backward()         # update grads
             optimizer.step()        # update parameters
 
-            # record loss and update step count
-            train_loss += loss.item()
-
             # update progress bar
-            kbar.update(p_t, values=[("training loss", train_loss)])
+            kbar.update(p_t, values=[("training loss", loss.item())])
 
             # validation 
-            if p_t == len(t_loader):
+            if p_t != 0 and p_t % 17085 == 0:        # => 5 times per epoch
+                print("\n\n Performing validation cycle.\n")
+
                 model.eval()    # pause training
 
                 with torch.no_grad():
                     for p_v, ((review, sentiment), _) in enumerate(v_loader):
                         loss = model_loss(model, sentiment, review)
                         valid_loss += loss.item()
-                        kbar.add(1, values=[('validation loss', valid_loss)])
                 
                 avg_valid_loss = valid_loss/len(v_loader)
-
-                # reset training/validation loss
-                train_loss = 0.0
-                valid_loss = 0.0
 
                 if best_loss > avg_valid_loss:
                     best_loss = avg_valid_loss
 
                     # save checkpoint
-                    checkpoint(model, valid_loss)
+                    save_checkpoint(model, avg_valid_loss)
 
-    checkpoint(model, valid_loss)
+                # reset validation loss
+                valid_loss = 0.0
+
+    save_checkpoint(model, valid_loss)
