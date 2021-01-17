@@ -11,19 +11,22 @@ def model_loss(model, sentiment, review):
     return loss
 
 
-def save_checkpoint(model, optimizer, epoch, valid_loss):
+def save_checkpoint(model, optimizer, epoch, valid_loss, final=False):
+    beep = "chkpt"
+    if final:
+        beep = "final"
+
     torch.save(
         {'model_state_dict' : model.state_dict(),
          'optimizer_state_dict' : optimizer.state_dict(),
          'epoch' : epoch,
          'valid_loss' : valid_loss}, 
-         './checkpoints/model.pt')
+         './checkpoints/model_{}.pt'.format(beep))
 
     print("\nSaved checkpoint... Validation loss reported: {}\n".format(valid_loss))
 
 
-def train(model, optimizer, t_loader, v_loader, num_epochs=5):
-    best_loss = float("Inf")
+def train(model, optimizer, t_loader, v_loader, num_epochs=5, best_loss = float("Inf")):
     valid_loss = 0.0
 
     model.train()
@@ -57,9 +60,9 @@ def train(model, optimizer, t_loader, v_loader, num_epochs=5):
                     best_loss = avg_valid_loss
 
                     # save checkpoint
-                    save_checkpoint(model, avg_valid_loss)
+                    save_checkpoint(model, optimizer, epoch, avg_valid_loss)
 
                 # reset validation loss
                 valid_loss = 0.0
 
-    save_checkpoint(model, valid_loss)
+    save_checkpoint(model, optimizer, 0, 0, True)

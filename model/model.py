@@ -9,6 +9,10 @@ class BERT(nn.Module):
         options_name = "bert-base-uncased"
         self.encoder = BertForSequenceClassification.from_pretrained(options_name)
 
-    def forward(self, text, label):
-        loss, prediction = self.encoder(text, labels=label)[:2]
-        return loss, prediction
+    def forward(self, text, label, training=True):
+        if training:
+            loss, prediction = self.encoder(text, labels=label)[:2]
+            return loss, prediction
+        else:
+            prediction = self.encoder(text, labels=label)[:2]
+            return prediction
