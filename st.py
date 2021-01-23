@@ -381,16 +381,15 @@ d = alt.Chart(df_2).mark_line(point=True).encode(
 st.write(d)
 
 st.markdown("""
-The results from using weighted comments are not great. The drop in positivity 
-rating on release day is much more dramatic, but there are unexpected positive
-and negative spikes. My suspicion is that in adopting this method I have placed
-too much faith in the accuracy of the model. A heavily upvoted comment that is 
-mis-labelled has much more of an impact when using this method.
+The results from using weighted comments show that the drop in positivity 
+rating on release day is much more dramatic than previously depicted. However, 
+there is a somewhat unexpected rebound after the initial drop. I suspect that 
+this is a result of people joking about all the bugs in the game after the initial 
+wave of rage had ended. 
 """)
 st.markdown("")
 st.markdown("""
-note: I think I understand the source of this unexpected result and I'm working 
-on a fix.
+Maybe more to come...
 """)
 
 st.header("Code for the Model")
