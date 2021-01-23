@@ -11,6 +11,9 @@ df = df.drop(columns=['index', 'parent_upvotes','_date','pos_raw'])
 df['pos_rting'] = df['pos_rting'] * 100
 
 st.title("Sentiment analysis of the Cyberpunk 2077 subreddit before and after the worst release of all time")
+st.markdown("""
+github repo: https://github.com/dleviminzi/cyberpunk_sentiment_analysis
+""")
 
 st.header("Scrapping Posts and Comments from Reddit")
 
