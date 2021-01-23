@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import datetime as dt
+from collections import defaultdict
 
 df = pd.read_csv('./judged_cbp.csv')
 df = df.sort_values('comment_upvotes', ascending=False)
@@ -233,7 +234,7 @@ I will continue to investigate, but at the moment I can only attribute it to som
 misunderstanding on my part or failure on the part of the API. In either case,
 for now those days will not be considered. 
 """)
-
+df = df[df['day'] < '2020-12-21']
 
 st.header("Cleaning the Text")
 st.markdown("""
@@ -248,14 +249,20 @@ will have to be truncated. For comments that are too long, I opted to take the s
 starting from the end because I imagine conclusions are more informative than introductions.
 """)
 
+with st.beta_expander('Example of raw and cleaned text'):
+    col_dirty, col_clean = st.beta_columns(2)
 
-df = df[df['day'] < '2020-12-21']
-st.write(df['body'][1])
-st.write(df['clean_body'][1])
+    with col_dirty:
+        st.markdown("##### Raw Text")
+        st.markdown(df['body'][1]) 
+    with col_clean:
+        st.markdown("##### Cleaned Text")
+        st.markdown(df['clean_body'][1])
+
 
 st.header("Most Upvoted Comments")
 st.markdown("""
-Anyways, let's take a look at the comments(pre-cleaning) that received the most 
+Let's take a look at the comments(pre-cleaning) that received the most 
 upvotes during the interval we pulled. They are funny and tragic.
 """)
 num = st.slider("Number of top comments to display (max=100)", 0, 100, 3)
@@ -330,17 +337,156 @@ with col2:
 st.write(b)
 
 st.markdown("""
-## ??
+## Weighting by Number of Upvotes
 The method above ignores one of our best indicators: the number of upvotes the 
 comment received. As it stands, a positivity rating of 95% with 5 upvotes is 
-just as relevant as a postivity rating of 5% with 1000 upvotes. This obviously
-does not make sense, so we will now discuss how to incorporate upvotes into 
-our analysis.
+just as relevant as a positivity rating of 5% with 1000 upvotes. This doesn't seem very fair.
+""")
+st.markdown("")
+st.markdown("""
+To try to address this we can weight each comment by the number of upvotes that 
+it received. For each day, the positivity rating of each comment is counted the 
+number of time that it was upvoted. Doing this we get the following plot.
+""")
+thresh2 = st.slider("Select positivity threshold  ", 0, 99, 95)
+df_a2 = df[df['pos_rting'] >= thresh2]
+df_b2 = df[df['pos_rting'] <= 100 - thresh2]
+df_trimmed2 = pd.concat([df_a2, df_b2])
+rting_log = defaultdict(list)
+
+def rting(row):
+    for i in range(row['comment_upvotes']):
+        rting_log[row['day']].append(row['pos_rting'])
+        if i == 10000:
+            break
+
+
+df_trimmed2.apply(rting, axis=1)
+rting_log.keys()
+rtings = {}
+
+for day in rting_log.keys():
+    av_rting = 0
+    for rting in rting_log[day]:
+        av_rting += rting
+    rtings[day] = av_rting/len(rting_log[day])
+
+df_2 = pd.DataFrame.from_dict(rtings,orient='index')
+df_2 = df_2.reset_index()
+df_2 = df_2.rename(columns={'index': 'day', 0: 'avg_rting'})
+d = alt.Chart(df_2).mark_line(point=True).encode(
+    x='day',
+    y='avg_rting'
+).properties(width=700, height=400)
+st.write(d)
+
+st.markdown("""
+The results from using weighted comments are not great. The drop in positivity 
+rating on release day is much more dramatic, but there are unexpected positive
+and negative spikes. My suspicion is that in adopting this method I have placed
+too much faith in the accuracy of the model. A heavily upvoted comment that is 
+mis-labelled has much more of an impact when using this method.
 """)
 
-
+st.header("Code for the Model")
+st.markdown("""
+For sentiment analysis, I used Hugging Face's BERT for sequence classification.
+Essentially, this means that instead of training a model from scratch I just fine 
+tuned it on my more constrained dataset. In the expanders below you can take a 
+look at the code.
+""")
 with st.beta_expander('Model'):
-    st.code('model goes here')
+    st.code("""
+    from transformers import BertForSequenceClassification
+    import torch.nn as nn
+
+    class BERT(nn.Module):
+        # implementation is made extremely easy by huggingface
+        def __init__(self):
+            super(BERT, self).__init__()
+
+            options_name = "bert-base-uncased"
+            self.encoder = BertForSequenceClassification.from_pretrained(options_name)
+
+        def forward(self, text, label, training=True):
+            if training:
+                loss, prediction = self.encoder(text, labels=label)[:2]
+                return loss, prediction
+            else:
+                prediction = self.encoder(text, labels=label)[:2]
+                return prediction
+    """)
+
 
 with st.beta_expander('Trainer'):
-    st.code('trainer goes here')
+    st.code("""
+    import pkbar
+    import torch
+
+    def model_loss(model, sentiment, review):
+        sentiment = sentiment.type(torch.cuda.LongTensor)           
+        review = review.type(torch.cuda.LongTensor)  
+        
+        # loss is computed by BertForSequenceClassification
+        loss, _ = model(review, sentiment)      # discarding pred here
+
+        return loss
+
+
+    def save_checkpoint(model, optimizer, epoch, valid_loss, train_loss, final=False):
+        beep = "chkpt"
+        if final:
+            beep = "final"
+
+        torch.save(
+            {'model_state_dict' : model.state_dict(),
+            'optimizer_state_dict' : optimizer.state_dict(),
+            'epoch' : epoch,
+            'valid_loss' : valid_loss}, 
+            './checkpoints/model_large_{}.pt'.format(beep))
+
+        print("\\nSaved checkpoint... Validation loss reported: {}".format(valid_loss))
+
+
+    def train(model, optimizer, t_loader, v_loader, num_epochs=5, best_loss = float("Inf")):
+        valid_loss = 0.0
+
+        model.train()
+        for epoch in range(num_epochs):
+            kbar = pkbar.Kbar(target=len(t_loader), epoch=epoch, 
+                            num_epochs=num_epochs, width=10, always_stateful=False)
+
+            for p_t, ((review, sentiment), _) in enumerate(t_loader):
+                optimizer.zero_grad()       # zero grads 
+                loss = model_loss(model, sentiment, review)     # calc loss
+                loss.backward()         # update grads
+                optimizer.step()        # update parameters
+
+                # update progress bar
+                train_loss = loss.item()
+                kbar.update(p_t, values=[("training loss", train_loss)])
+
+                # validation 
+                if p_t != 0 and p_t % 17085 == 0:        # => 5 times per epoch
+                    print("\\n\\n Performing validation cycle.\\n")
+
+                    model.eval()    # pause training
+
+                    with torch.no_grad():
+                        for p_v, ((review, sentiment), _) in enumerate(v_loader):
+                            loss = model_loss(model, sentiment, review)
+                            valid_loss += loss.item()
+                    
+                    avg_valid_loss = valid_loss/len(v_loader)
+
+                    if best_loss > avg_valid_loss:
+                        best_loss = avg_valid_loss
+
+                        # save checkpoint
+                        save_checkpoint(model, optimizer, epoch, avg_valid_loss, train_loss)
+
+                    # reset validation loss
+                    valid_loss = 0.0
+
+        save_checkpoint(model, optimizer, 0, 0, 0, True)
+    """)
