@@ -387,6 +387,11 @@ and negative spikes. My suspicion is that in adopting this method I have placed
 too much faith in the accuracy of the model. A heavily upvoted comment that is 
 mis-labelled has much more of an impact when using this method.
 """)
+st.markdown("")
+st.markdown("""
+note: I think I understand the source of this unexpected result and I'm working 
+on a fix.
+""")
 
 st.header("Code for the Model")
 st.markdown("""
