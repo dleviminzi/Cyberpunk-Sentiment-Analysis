@@ -1,0 +1,12 @@
+psycopg2_binary==2.8.6
+transformers==4.1.1
+pandas==1.2.0
+torchtext==0.8.1
+psaw==0.0.12
+praw==7.1.0
+altair==4.1.0
+streamlit==0.73.1
+torch==1.7.1
+pkbar==0.5
+psycopg2==2.8.6
+scikit_learn==0.24.1
